@@ -1,9 +1,19 @@
+# VSCode settings
 /.vscode
+
+# Extensions caches
 /.cache
+
+# Intermediate build directory for dependencies
 /build
+
+# Compiled project executable/library
 /target
 
-# Documentation
+# Compiled dependencies
+/deps
+
+# Generated Documentation
 /docs/private/*
 /docs/html
 
