@@ -1,31 +1,31 @@
-[submodule "doxygen-awesome-css"]
+[submodule "tools/doxygen-awesome-css"]
 	path = tools/doxygen-awesome-css
 	url = https://github.com/jothepro/doxygen-awesome-css.git
 
-[submodule "fmt"]
+[submodule "vendor/fmt"]
     path = vendor/fmt
     url = https://github.com/fmtlib/fmt.git
 
-[submodule "bgfx"]
+[submodule "vendor/bgfx"]
     path = vendor/bgfx
     url = https://github.com/bkaradzic/bgfx.git
 
-[submodule "bimg"]
+[submodule "vendor/bimg"]
     path = vendor/bimg
     url = https://github.com/bkaradzic/bimg.git
 
-[submodule "bx"]
+[submodule "vendor/bx"]
     path = vendor/bx
     url = https://github.com/bkaradzic/bx.git
 
-[submodule "glfw3"]
+[submodule "vendor/glfw3"]
     path = vendor/glfw3
     url = https://github.com/glfw/glfw.git
 
-[submodule "sfml"]
+[submodule "vendor/sfml"]
     path = vendor/sfml
     url = https://github.com/SFML/SFML.git
 
-[submodule "spdlog"]
+[submodule "vendor/spdlog"]
     path = vendor/spdlog
     url = https://github.com/gabime/spdlog.git
