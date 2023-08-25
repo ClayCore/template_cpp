@@ -113,7 +113,7 @@ class SFMLBuilder(cm.Builder):
         # ==============================================================================================
         os.chdir(old_cwd)
 
-        for path in self.target_build_dir('**'):
+        for path in self.target_build_dir.glob('**'):
             for lib in lib_paths:
                 if path != lib and path.is_file():
                     path.unlink()

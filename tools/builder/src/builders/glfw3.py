@@ -102,7 +102,7 @@ class GLFW3Builder(cm.Builder):
         # ==============================================================================================
         os.chdir(old_cwd)
 
-        for path in self.target_build_dir('**'):
+        for path in self.target_build_dir.glob('**'):
             if path != glfw_lib_path and path.is_file():
                 path.unlink()
             elif path != glfw_lib_path and path.is_dir():

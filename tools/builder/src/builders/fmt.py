@@ -104,7 +104,7 @@ class FMTBuilder(cm.Builder):
         # ==============================================================================================
         os.chdir(old_cwd)
 
-        for path in self.target_build_dir.glob('**/*.*'):
+        for path in self.target_build_dir.glob('**'):
             if path != fmt_lib_path and path.is_file():
                 path.unlink()
             elif path != fmt_lib_path and path.is_dir():
