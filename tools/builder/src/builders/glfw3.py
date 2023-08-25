@@ -9,7 +9,7 @@ import shlex
 
 class GLFW3Builder(cm.Builder):
     def __init__(self, root_path: Path, deps: dict):
-        super().__init__(root_path, deps, 'fmt')
+        super().__init__(root_path, deps, 'glfw3')
 
     def prepare(self) -> cm.Result:
         # ==============================================================================================
@@ -19,13 +19,10 @@ class GLFW3Builder(cm.Builder):
         # ==============================================================================================
         # Create include directory and copy headers
         # ==============================================================================================
-        if self.target_include_dir.exists():
-            msg = f'[GLFW3]: \'{str(self.target_include_dir)}\' already exists'
-            return cm.Result(cm.Error.FILE_EXISTS_WARNING, msg)
-        else:
+        if not self.target_include_dir.exists():
             self.target_include_dir.mkdir(parents=True)
 
-        shutil.copytree(self.include_dir, self.target_include_dir)
+        cm.Builder.copytree(self.include_dir, self.target_include_dir)
         if not self.target_include_dir.exists():
             msg = f'[GLFW3]: failed to transact copy to \'{str(self.target_include_dir)}\''
             return cm.Result(cm.Error.FILE_COPY_FAILED, msg)
@@ -33,10 +30,7 @@ class GLFW3Builder(cm.Builder):
         # ==============================================================================================
         # Create build directory
         # ==============================================================================================
-        if self.target_build_dir.exists():
-            msg = f'[GLFW3]: \'{str(self.target_build_dir)}\' already exists'
-            return cm.Result(cm.Error.FILE_EXISTS_WARNING, msg)
-        else:
+        if not self.target_build_dir.exists():
             self.target_build_dir.mkdir(parents=True)
 
         if not self.target_build_dir.exists():
@@ -49,13 +43,13 @@ class GLFW3Builder(cm.Builder):
         # ==============================================================================================
         # Save current cwd
         # ==============================================================================================
-        old_cwd: str = os.get_cwd()
+        old_cwd: str = os.getcwd()
 
         # ==============================================================================================
         # Build glfw3 in target build directory
         # ==============================================================================================
         cwd: Path = self.target_build_dir
-        os.chdir(cwd)
+        os.chdir(str(cwd))
 
         # ==============================================================================================
         # Run cmake to generate build configurations
@@ -72,8 +66,8 @@ class GLFW3Builder(cm.Builder):
         # Use 'msbuild' to build it
         # FIXME: msbuild not used on any platform except windows
         # ==============================================================================================
-        cmd = shlex.split(
-            f'msbuild GLFW.sln /t:GLFW\\glfw /p:Configuration="Release" /p:Platform="x64"')
+        cmd = ['msbuild', 'GLFW.sln', '/t:GLFW3\\glfw', '/clp:ErrorsOnly',
+               '/p:Configuration=Release', '/p:Platform=x64']
         result: sp.CompletedProcess = sp.run(cmd)
         if result.returncode != 0:
             msg = f'[GLFW3]: msbuild return code: {result.returncode}'
@@ -94,7 +88,7 @@ class GLFW3Builder(cm.Builder):
             msg = '[GLFW3]: path to compiler library not found'
             return cm.Result(cm.Error.FILE_MISSING, msg)
 
-        shutil.copy(glfw_lib_path, self.target_build_dir)
+        shutil.copy2(glfw_lib_path, self.target_build_dir)
 
         # ==============================================================================================
         # Clean-up, restore old cwd
@@ -102,11 +96,16 @@ class GLFW3Builder(cm.Builder):
         # ==============================================================================================
         os.chdir(old_cwd)
 
-        for path in self.target_build_dir.glob('**'):
-            if path != glfw_lib_path and path.is_file():
-                path.unlink()
-            elif path != glfw_lib_path and path.is_dir():
-                path.rmdir()
+        files: list[str] = []
+        for path in self.target_build_dir.glob('*'):
+            if path != glfw_lib_path:
+                files.append(str(path))
+
+        for path in files:
+            if os.path.isfile(path) and not path.endswith('.lib'):
+                p = Path(path).unlink()
+            if os.path.isdir(path):
+                shutil.rmtree(path)
 
         return super().build()
 

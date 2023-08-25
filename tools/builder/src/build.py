@@ -4,7 +4,6 @@ from builders.common import Error, Result
 from builders import *
 
 from classopt import classopt, config
-from pprintpp import pprint as pp
 import colorama
 
 import importlib
@@ -16,9 +15,9 @@ import sys
 class Opt:
     # Describes launch parameters
 
-    command: str = config(long=False, required=True)  # Action to perform
-    root_path: str                                   # Path to project root
-    deps: list[str]                                  # Dependencies
+    action: str       # Action to perform
+    root_path: str    # Path to project root
+    deps: list[str]   # Dependencies
 
 
 # Acquire a dictionary, with paths pointing to each dependency
@@ -28,8 +27,13 @@ def get_all_deps(opts: Opt) -> dict:
     root = root_tmp.resolve()
     deps = {}
     for dep in opts.deps:
-        path = root / 'vendor' / dep
-        deps[dep] = {Dependency.create(dep, root, path)}
+        if dep == 'bgfx':
+            # add bimg and bgfx
+            deps['bimg'] = Dependency.create('bimg', root)
+            deps['bx'] = Dependency.create('bx', root)
+            deps[dep] = Dependency.create(dep, root)
+        else:
+            deps[dep] = Dependency.create(dep, root)
 
     return deps
 
@@ -38,19 +42,22 @@ def add_builder(name: str, opt: Opt, deps: dict, root_path: Path):
     if name in opt.deps:
         module = importlib.import_module(f'builders.{name}')
         builder = getattr(module, f'{name.upper()}Builder')(root_path, deps)
-        if opt.command is 'build':
+        if opt.action == 'build':
             result = builder.prepare()
             if result.error != Error.SUCCESS:
+                print(result.result)
                 raise RuntimeError(
                     f'[{name.upper()}]: failed to prepare build')
 
             result = builder.build()
             if result.error != Error.SUCCESS:
+                print(result.result)
                 raise RuntimeError(
                     f'[{name.upper()}]: failed to execute build')
-        elif opt.command is 'clean':
+        elif opt.action == 'clean':
             result = builder.clean()
             if result.error != Error.SUCCESS:
+                print(result.result)
                 raise RuntimeError(
                     f'[{name.upper()}]: failed to execute clean')
 
@@ -72,7 +79,9 @@ def main():
         try:
             add_builder(dep, opt, deps, root_path)
         except RuntimeError as re:
-            print(f'{colorama.Fore.RED}RuntimeError caught: {re}', file=sys.stderr)
+            print(
+                f'{colorama.Fore.RED}RuntimeError caught: {colorama.Style.BRIGHT}{colorama.Fore.BLUE}{re}{colorama.Style.RESET_ALL}\n', file=sys.stderr)
+            return 1
 
 
 if __name__ == "__main__":

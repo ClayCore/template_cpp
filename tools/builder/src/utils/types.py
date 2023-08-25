@@ -16,7 +16,7 @@ class Dependency(object):
     built: bool
 
     def exists(self) -> bool:
-        if self.build_dir.exists() and self.include_dir.exists():
+        if self.build_dir.parent.exists():
             return True
 
         return False
@@ -31,9 +31,9 @@ class Dependency(object):
         return False
 
     @staticmethod
-    def create(name: str, root_path: Path, dir: Path):
-        build_dir: Path = dir / 'build'
-        include_dir: Path = dir / 'include'
+    def create(name: str, root_path: Path):
+        build_dir: Path = root_path / 'vendor' / name / 'build'
+        include_dir: Path = root_path / 'vendor' / name / 'include'
 
         target_build_dir: Path = root_path / 'deps' / name / 'build'
         target_include_dir: Path = root_path / 'deps' / name / 'include'

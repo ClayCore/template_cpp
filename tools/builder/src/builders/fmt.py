@@ -21,13 +21,10 @@ class FMTBuilder(cm.Builder):
         # ==============================================================================================
         # Create include directory and copy headers
         # ==============================================================================================
-        if self.target_include_dir.exists():
-            msg = f'[FMT]: \'{str(self.target_include_dir)}\' already exists'
-            return cm.Result(cm.Error.FILE_EXISTS_WARNING, msg)
-        else:
+        if not self.target_include_dir.exists():
             self.target_include_dir.mkdir(parents=True)
 
-        shutil.copytree(self.include_dir, self.target_include_dir)
+        cm.Builder.copytree(self.include_dir, self.target_include_dir)
         if not self.target_include_dir.exists():
             msg = f'[FMT]: failed to transact copy to \'{str(self.target_include_dir)}\''
             return cm.Result(cm.Error.FILE_COPY_FAILED, msg)
@@ -35,10 +32,7 @@ class FMTBuilder(cm.Builder):
         # ==============================================================================================
         # Create build directory
         # ==============================================================================================
-        if self.target_build_dir.exists():
-            msg = f'[FMT]: \'{str(self.target_build_dir)}\' already exists'
-            return cm.Result(cm.Error.FILE_EXISTS_WARNING, msg)
-        else:
+        if not self.target_build_dir.exists():
             self.target_build_dir.mkdir(parents=True)
 
         if not self.target_build_dir.exists():
@@ -51,13 +45,13 @@ class FMTBuilder(cm.Builder):
         # ==============================================================================================
         # Save current cwd
         # ==============================================================================================
-        old_cwd: str = os.get_cwd()
+        old_cwd: str = os.getcwd()
 
         # ==============================================================================================
         # Build fmt in target build directory
         # ==============================================================================================
         cwd: Path = self.target_build_dir
-        os.chdir(cwd)
+        os.chdir(str(cwd))
 
         # ==============================================================================================
         # Run cmake
@@ -75,7 +69,7 @@ class FMTBuilder(cm.Builder):
         # FIXME: msbuild not used on any platform except windows
         # ==============================================================================================
         cmd = shlex.split(
-            'msbuild FMT.sln /t:fmt /p:Configuration="Release" /p:Platform="x64"')
+            'msbuild FMT.sln /t:fmt /clp:ErrorsOnly /p:Configuration="Release" /p:Platform="x64"')
         result: sp.CompletedProcess = sp.run(cmd)
         if result.returncode != 0:
             msg = f'[FMT]: msbuild return code: {result.returncode}'
@@ -96,7 +90,7 @@ class FMTBuilder(cm.Builder):
             msg = '[FMT]: path to compiled library not found'
             return cm.Result(cm.Error.FILE_MISSING, msg)
 
-        shutil.copy(fmt_lib_path, self.target_build_dir)
+        shutil.copy2(fmt_lib_path, self.target_build_dir)
 
         # ==============================================================================================
         # Clean-up, restore old cwd
@@ -104,11 +98,16 @@ class FMTBuilder(cm.Builder):
         # ==============================================================================================
         os.chdir(old_cwd)
 
-        for path in self.target_build_dir.glob('**'):
-            if path != fmt_lib_path and path.is_file():
-                path.unlink()
-            elif path != fmt_lib_path and path.is_dir():
-                path.rmdir()
+        files: list[str] = []
+        for path in self.target_build_dir.glob('*'):
+            if path != fmt_lib_path:
+                files.append(str(path))
+
+        for path in files:
+            if os.path.isfile(path) and not path.endswith('.lib'):
+                p = Path(path).unlink()
+            if os.path.isdir(path):
+                shutil.rmtree(path)
 
         return super().build()
 

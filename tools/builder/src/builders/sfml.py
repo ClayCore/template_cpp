@@ -9,7 +9,7 @@ import shlex
 
 class SFMLBuilder(cm.Builder):
     def __init__(self, root_path: Path, deps: dict):
-        super().__init__(root_path, deps, 'fmt')
+        super().__init__(root_path, deps, 'sfml')
 
     def prepare(self) -> cm.Result:
         # ==============================================================================================
@@ -19,13 +19,10 @@ class SFMLBuilder(cm.Builder):
         # ==============================================================================================
         # Create include directory and copy headers
         # ==============================================================================================
-        if self.target_include_dir.exists():
-            msg = f'[SFML]: \'{str(self.target_include_dir)}\' already exists'
-            return cm.Result(cm.Error.FILE_EXISTS_WARNING, msg)
-        else:
+        if not self.target_include_dir.exists():
             self.target_include_dir.mkdir(parents=True)
 
-        shutil.copytree(self.include_dir, self.target_include_dir)
+        cm.Builder.copytree(self.include_dir, self.target_include_dir)
         if not self.target_include_dir.exists():
             msg = f'[SFML]: failed to transact copy to \'{str(self.target_include_dir)}\''
             return cm.Result(cm.Error.FILE_COPY_FAILED, msg)
@@ -33,10 +30,7 @@ class SFMLBuilder(cm.Builder):
         # ==============================================================================================
         # Create build directory
         # ==============================================================================================
-        if self.target_build_dir.exists():
-            msg = f'[SFML]: \'{str(self.target_build_dir)}\' already exists'
-            return cm.Result(cm.Error.FILE_EXISTS_WARNING, msg)
-        else:
+        if not self.target_build_dir.exists():
             self.target_build_dir.mkdir(parents=True)
 
         if not self.target_build_dir.exists():
@@ -49,13 +43,13 @@ class SFMLBuilder(cm.Builder):
         # ==============================================================================================
         # Save current cwd
         # ==============================================================================================
-        old_cwd: str = os.get_cwd()
+        old_cwd: str = os.getcwd()
 
         # ==============================================================================================
         # Build SFML in target build directory
         # ==============================================================================================
         cwd: Path = self.target_build_dir
-        os.chdir(cwd)
+        os.chdir(str(cwd))
 
         # ==============================================================================================
         # Run cmake to generate build configurations
@@ -73,8 +67,8 @@ class SFMLBuilder(cm.Builder):
         # Use 'msbuild' to build it
         # FIXME: msbuild not used on any platform except windows
         # ==============================================================================================
-        cmd = shlex.split(
-            f'msbuild SFML.sln /t:CMake\\ALL_BUILD /p:Configuration="Release" /p:Platform="x64"')
+        cmd = ['msbuild', 'SFML.sln', '/clp:ErrorsOnly',
+               '/t:CMake\\ALL_BUILD', '/p:Configuration=Release', '/p:Platform=x64']
         result: sp.CompletedProcess = sp.run(cmd)
         if result.returncode != 0:
             msg = f'[SFML]: msbuild return code: {result.returncode}'
@@ -90,12 +84,12 @@ class SFMLBuilder(cm.Builder):
             msg = '[SFML]: path to compiler library directory not found'
             return cm.Result(cm.Error.FILE_MISSING, msg)
 
-        sfml_audio_lib: Path = lib_path / 'sfml-audio-s.lib'
-        sfml_graphics_lib: Path = lib_path / 'sfml-graphics-s.lib'
-        sfml_main_lib: Path = lib_path / 'sfml-main-s.lib'
-        sfml_network_lib: Path = lib_path / 'sfml-network-s.lib'
-        sfml_system_lib: Path = lib_path / 'sfml-system-s.lib'
-        sfml_window_lib: Path = lib_path / 'sfml-window-s.lib'
+        sfml_audio_lib: Path = lib_path / 'sfml-audio.lib'
+        sfml_graphics_lib: Path = lib_path / 'sfml-graphics.lib'
+        sfml_main_lib: Path = lib_path / 'sfml-main.lib'
+        sfml_network_lib: Path = lib_path / 'sfml-network.lib'
+        sfml_system_lib: Path = lib_path / 'sfml-system.lib'
+        sfml_window_lib: Path = lib_path / 'sfml-window.lib'
 
         lib_paths = [sfml_audio_lib, sfml_graphics_lib, sfml_main_lib,
                      sfml_network_lib, sfml_system_lib, sfml_window_lib]
@@ -105,7 +99,7 @@ class SFMLBuilder(cm.Builder):
                 msg = '[SFML]: path to compiler library not found'
                 return cm.Result(cm.Error.FILE_MISSING, msg)
 
-            shutil.copy(lib, self.target_build_dir)
+            shutil.copy2(lib, self.target_build_dir)
 
         # ==============================================================================================
         # Clean-up, restore old cwd
@@ -113,12 +107,17 @@ class SFMLBuilder(cm.Builder):
         # ==============================================================================================
         os.chdir(old_cwd)
 
-        for path in self.target_build_dir.glob('**'):
+        files: list[str] = []
+        for path in self.target_build_dir.glob('*'):
             for lib in lib_paths:
-                if path != lib and path.is_file():
-                    path.unlink()
-                elif path != lib and path.is_dir():
-                    path.rmdir()
+                if path != lib:
+                    files.append(str(path))
+
+        for path in files:
+            if os.path.isfile(path) and not path.endswith('.lib'):
+                p = Path(path).unlink()
+            if os.path.isdir(path):
+                shutil.rmtree(path)
 
         return super().build()
 

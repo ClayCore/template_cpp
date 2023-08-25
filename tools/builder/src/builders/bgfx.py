@@ -16,17 +16,16 @@ class BGFXBuilder(cm.Builder):
         # bgfx, bimg, and bx dont utilize a build directory
         # and have to be built together in one project
         # ==============================================================================================
+        if not self.target_build_dir.exists():
+            self.target_build_dir.mkdir(parents=True)
 
         # ==============================================================================================
         # Create include directory and copy headers
         # ==============================================================================================
-        if self.target_include_dir.exists():
-            msg = f'[BGFX]: \'{str(self.target_include_dir)}\' already exists'
-            return cm.Result(cm.Error.FILE_EXISTS_WARNING, msg)
-        else:
+        if not self.target_include_dir.exists():
             self.target_include_dir.mkdir(parents=True)
 
-        shutil.copytree(self.include_dir, self.target_include_dir)
+        cm.Builder.copytree(self.include_dir, self.target_include_dir)
         if not self.target_include_dir.exists():
             msg = f'[BGFX]: failed to transact copy to \'{str(self.target_include_dir)}\''
             return cm.Result(cm.Error.FILE_COPY_FAILED, msg)
@@ -52,8 +51,8 @@ class BGFXBuilder(cm.Builder):
         # ==============================================================================================
         # Change cwd to build bgfx
         # ==============================================================================================
-        cwd: Path = self.deps[self.name]
-        os.chdir(cwd)
+        cwd: Path = self.deps[self.name].include_dir.parent
+        os.chdir(str(cwd))
 
         # ==============================================================================================
         # Run genie
@@ -72,7 +71,7 @@ class BGFXBuilder(cm.Builder):
         # FIXME: msbuild not used on any platform besides windows
         # ==============================================================================================
         cmd = shlex.split(
-            'msbuild .build/projects/vs2019/bgfx.sln /p:Configuration="Release" /p:Platform="x64"')
+            'msbuild .build/projects/vs2019/bgfx.sln /clp:ErrorsOnly /p:Configuration="Release" /p:Platform="x64"')
         result: sp.CompletedProcess = sp.run(cmd)
         if result.returncode != 0:
             msg = f'[BGFX]: msbuild return code: {result.returncode}'
@@ -84,7 +83,7 @@ class BGFXBuilder(cm.Builder):
         # Copy built libraries
         # FIXME: path depends on os and platform
         # ==============================================================================================
-        lib_path: Path = self.deps[self.name] / \
+        lib_path: Path = self.deps[self.name].include_dir.parent / \
             '.build' / 'win64_vs2019' / 'bin'
         if not lib_path.exists():
             msg = '[BGFX]: path to compiled libraries not found'
@@ -103,7 +102,7 @@ class BGFXBuilder(cm.Builder):
                 msg = '[BGFX]: libraries not found'
                 return cm.Result(cm.Error.FILE_MISSING, msg)
 
-            shutil.copy(lib, self.target_build_dir)
+            shutil.copy2(lib, self.target_build_dir)
 
         # ==============================================================================================
         # Clean-up, restore old cwd
