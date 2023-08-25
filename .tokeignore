@@ -1,0 +1,6 @@
+/.vscode/
+/.cache/
+/build/
+/vendor/
+/docs/
+/tools/

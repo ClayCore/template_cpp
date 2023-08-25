@@ -1,0 +1,12 @@
+/.vscode
+/.cache
+/build
+/target
+
+# Documentation
+/docs/private/*
+/docs/html
+
+# Python tooling
+/tools/builder/__pycache__/
+*.pyc
